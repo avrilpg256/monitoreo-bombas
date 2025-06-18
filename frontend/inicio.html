@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <title>Monitoreo de Bombas de Agua</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link href="/style.css" rel="stylesheet" />
 
 </head>
@@ -24,7 +25,8 @@
       <h2>Temperatura: <span id="valor-temp">--</span>ºC </h2></div>
     </div>
     <div class="chart-placeholder">
-      <h3>Gráfica Temperatura</h3>
+  <canvas id="graficoTemperatura" width="600" height="300"></canvas>
+
     </div>
   </div>
 
@@ -63,7 +65,7 @@ background-color:rgba(0,0,0,0.5); z-index:9999; justify-content:center; align-it
       if (data.temperatura !== null && data.temperatura !== undefined) {
         const temp = data.temperatura;
         document.getElementById('valor-temp').textContent = temp.toFixed(2);
-        if (data.temperatura > 30) {
+        if (data.temperatura > 35) {
           document.getElementById('modalAlerta').style.display = 'flex';
         }
       }
@@ -100,6 +102,69 @@ async function actualizarDatos() {
 
 actualizarDatos();
 setInterval(actualizarDatos, 5000);
+</script>
+
+
+<script>
+const channelID = 2989940; // Ej: 1234567
+const readAPIKey = 'PC85X5YPHHPX7YKD'; // Opcional si tu canal es público
+let miGrafico;
+
+async function obtenerDatos() {
+  const url = `https://api.thingspeak.com/channels/${channelID}/fields/1.json?results=20&api_key=${readAPIKey}`;
+  
+  try {
+    const response = await fetch(url);
+    const data = await response.json();
+    const feeds = data.feeds;
+
+    const etiquetas = feeds.map(entry => entry.created_at);
+    const valores = feeds.map(entry => parseFloat(entry.field1));
+
+    dibujarGrafico(etiquetas, valores);
+  } catch (error) {
+    console.error('Error al obtener datos:', error);
+  }
+}
+
+function dibujarGrafico(etiquetas, datos) {
+  const ctx = document.getElementById('graficoTemperatura').getContext('2d');
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: etiquetas,
+      datasets: [{
+        label: 'Temperatura (°C)',
+        data: datos,
+        borderColor: 'rgba(0, 123, 255, 1)',
+        backgroundColor: 'rgba(0, 123, 255, 0.2)',
+        fill: true,
+        tension: 0.3
+      }]
+    },
+    options: {
+      scales: {
+        x: {
+          title: {
+            display: true,
+            text: 'Fecha y hora'
+          }
+        },
+        y: {
+          beginAtZero: false,
+          title: {
+            display: true,
+            text: 'Temperatura (°C)'
+          }
+        }
+      }
+    }
+  });
+}
+
+obtenerDatos();
+setInterval(obtenerDatos, 60000); // cada 60 segundos
+
 </script>
 
 </body>

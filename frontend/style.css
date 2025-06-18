@@ -119,3 +119,12 @@ caption {
   color: #005f73;
   margin-bottom: 10px;
 }
+h2 {
+  text-align: center;
+  color: #005f99;
+  margin-bottom: 20px;
+}
+
+tr:nth-child(even) {
+  background-color: #f0f8ff;
+}

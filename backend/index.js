@@ -24,6 +24,31 @@ app.use(express.static(path.join('frontend')));
 app.use(express.json());
 app.use(express.static('public'));
 
+const TELEGRAM_BOT_TOKEN = '7574833745:AAG0H-HV4ij1zMe9SlR-mgo1Fn39Y55g4U8';
+const CHAT_ID = '7076310110';
+
+export async function enviarAlerta(mensaje) {
+  const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: CHAT_ID,
+        text: mensaje
+      })
+    });
+
+    const data = await res.json();
+    console.log("Mensaje enviado:", data);
+  } catch (error) {
+    console.error("Error enviando alerta Telegram:", error);
+  }
+}
+
+
+
 
 let temperaturaActual = null;
 let lecturas = [];
@@ -44,11 +69,21 @@ setInterval(async () => {
  try {
     await pool.query('INSERT INTO temperatura(valor) VALUES($1)', [promedio]);
     console.log("promedio listo");
+
+      if (promedio > 35) {
+      await pool.query(
+        'INSERT INTO historial_fallas(tipo, valor) VALUES($1, $2)',
+        ['Temperatura alta', promedio]
+      );
+      console.log("Falla detectada: Temperatura alta");
+     await enviarAlerta(`🚨 Alerta: Temperatura alta detectada (${promedio.toFixed(1)}°C) en la bomba.`);
+    }
+
   } catch (error) {
     console.error('Error al guardar el promedio:', error);
   }
   lecturas = [];
-}, 60_000);
+}, 30_000);
  
 app.get('/historial-temperatura', async (req, res) => {
   try {
@@ -60,10 +95,24 @@ app.get('/historial-temperatura', async (req, res) => {
   }
 });
 
-
 app.get('/api/temperatura', (req, res) => {
   res.json({ temperatura: temperaturaActual });
 });
+
+app.get('/fallas', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT tipo, valor, TO_CHAR(fecha, 'DD-MM-YYYY HH24:MI:SS') AS fecha
+      FROM historial_fallas
+      ORDER BY fecha DESC
+    `);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error al obtener fallas:', error);
+    res.status(500).send('Error al obtener el historial de fallas');
+  }
+});
+
 
 app.get('/', (req, res) => {
   res.sendFile(path.resolve('frontend', 'inicio.html'));
@@ -83,19 +132,67 @@ app.get('/vibracion', async(req, res) => {
 
 let ultimaVibracion = null;
 
-app.post('/api/vibracion', (req, res) => {
+app.post('/api/vibracion', async (req, res) => {
   const { vibracion } = req.body;
   ultimaVibracion = {
     vibracion,
     timestamp: new Date().toISOString()
   };
+
   console.log("Vibración detectada:", ultimaVibracion);
+
+
+  try {
+    await pool.query(
+      'INSERT INTO vibracion(estado) VALUES($1)', 
+      [vibracion]
+    );
+    console.log("Registro de vibración insertado correctamente");
+    if (parseInt(vibracion) === 0) {
+      await enviarAlerta('🚨 ¡Alerta! La bomba ha dejado de vibrar. Revisa su funcionamiento.');
+    }
+  } catch (error) {
+    console.error("Error al guardar vibración en BD:", error);
+    return res.status(500).json({ error: "No se pudo guardar en base de datos" });
+  }
+
   res.sendStatus(200);
 });
 
 app.get('/api/estado-vibracion', (req, res) => {
   res.json(ultimaVibracion || { vibracion: false, timestamp: null });
 });
+
+app.get('/historial-vibracion', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+        estado, 
+        TO_CHAR(
+          fecha AT TIME ZONE 'UTC' 
+          AT TIME ZONE 'America/Santiago', 
+          'DD-MM-YYYY HH24:MI:SS'
+        ) AS fecha_formateada 
+      FROM vibracion 
+      ORDER BY fecha DESC
+    `);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error al obtener historial de vibración:', error);
+    res.status(500).send('Error al obtener historial de vibración');
+  }
+});
+
+//app.get('/probar-alerta', async (req, res) => {
+ // try {
+  //  await enviarAlerta('🚨 Alerta: Temperatura alta detectada.');
+  //  await enviarAlerta('🚨 ¡Alerta! La bomba ha dejado de vibrar. Revisa su funcionamiento.');
+ // } catch (error) {
+  //  console.error('Error al enviar mensaje de prueba:', error);
+  //  res.status(500).send('Error al enviar mensaje de prueba');
+ // }
+//});
+
 
 app.listen(3000, '0.0.0.0', () => {
   console.log("Servidor escuchandooooo en puerto 3000");

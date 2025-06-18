@@ -14,7 +14,40 @@
   </nav>
 
   <div class="container">
-    <h1>Contenido próximamente...</h1>
+    <h2>Historial de Fallas</h2>
+<table id="tabla-fallas">
+  <thead>
+    <tr>
+      <th>Fecha</th>
+      <th>Tipo</th>
+      <th>Valor</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+<script>
+  async function cargarFallas() {
+    const res = await fetch('/fallas');
+    const data = await res.json();
+    const tbody = document.querySelector('#tabla-fallas tbody');
+    tbody.innerHTML = '';
+
+    data.forEach(falla => {
+      const fila = document.createElement('tr');
+      fila.innerHTML = `
+        <td>${falla.fecha}</td>
+        <td>${falla.tipo}</td>
+        <td>${falla.valor}</td>
+      `;
+      tbody.appendChild(fila);
+    });
+  }
+
+  cargarFallas();
+  setInterval(cargarFallas, 10000); 
+</script>
+
   </div>
 
   <footer>
