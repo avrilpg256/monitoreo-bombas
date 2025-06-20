@@ -14,41 +14,176 @@
     <a href="/vibracion">Vibración</a>
   </nav>
 
-  <div class="tablahis">
-  <h1>Historial de Temperaturas</h1>
-  <table id="tabla-historial">
-    <caption>Datos registrados por minuto</caption>
-    <thead>
-      <tr>
-        <th>Temperatura (°C)</th>
-        <th>Fecha</th>
-      </tr>
-    </thead>
-    <tbody>
-      
-    </tbody>
-  </table>
+ <div class="container">
+  <h1>Historial de Estado de la Bomba</h1>
+
+  <div class="layout-horizontal">
+   
+    <div class="tablajis">
+      <table>
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Temperatura (°C)</th>
+            <th>Vibración</th>
+            <th>Estado</th>
+          </tr>
+        </thead>
+        <tbody id="tabla-historial-estado">
+
+        </tbody>
+      </table>
+    </div>
+
+ <div class="tarjeta-ia">
+  <h3>🤖 HydroBot: Asistente Inteligente</h3>
+  <p id="mensaje-ia">Cargando análisis...</p>
+
+  <canvas id="graficoEstados" width="200" height="200" style="margin-top: 20px;"></canvas>
+
+  <div id="resumen-porcentajes" style="margin-top: 15px; font-size: 0.95em;"></div>
 </div>
 
+  </div>
+</div>
 
-  <script>
-    fetch('/historial-temperatura')
-      .then(res => res.json())
-      .then(data => {
-        const tabla = document.getElementById('tabla-historial').querySelector('tbody');
-        tabla.innerHTML = ''; 
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-        data.forEach(item => {
-          const fila = document.createElement('tr');
-          fila.innerHTML = `
-            <td>${item.valor} °C</td>
-            <td>${new Date(item.fecha).toLocaleString()}</td>
-          `;
-          tabla.appendChild(fila);
-        });
-      })
-      .catch(error => console.error('Error cargando historial:', error));
-  </script>
+   <script>
+let chart; 
+
+function renderGraficoEstados(criticos, advertencias, normales) {
+  const ctx = document.getElementById('graficoEstados').getContext('2d');
+
+  if (chart) chart.destroy();
+
+  chart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Crítico', 'Advertencia', 'Normal'],
+      datasets: [{
+        data: [criticos, advertencias, normales],
+        backgroundColor: ['#d62828', '#f77f00', '#2a9d8f']
+      }]
+    },
+    options: {
+      plugins: {
+        legend: {
+          position: 'bottom'
+        }
+      }
+    }
+  });
+}
+
+function generarRecomendacionIA(historial) {
+  let criticos = 0;
+  let advertencias = 0;
+  let normales = 0;
+
+  const hoy = new Date();
+  const cincoDiasAtras = new Date();
+  cincoDiasAtras.setDate(hoy.getDate() - 5);
+
+  for (const evento of historial) {
+    const [dia, mes, añoHora] = evento.fecha.split("-");
+    const [año, hora] = añoHora.split(" ");
+    const fechaEvento = new Date(`${año}-${mes}-${dia}T${hora}`);
+
+    if (fechaEvento >= cincoDiasAtras) {
+      const estado = evento.estado.toLowerCase();
+      if (estado === 'crítico') criticos++;
+      else if (estado === 'advertencia') advertencias++;
+      else normales++;
+    }
+  }
+
+  let mensaje = '';
+  if (criticos >= 5) {
+    mensaje = `⚠️ Se detectaron ${criticos} fallas críticas recientes. Se recomienda mantenimiento urgente.`;
+  } else if (advertencias >= 10 || (criticos > 0 && criticos < 5)) {
+    mensaje = `🔧 Se detectaron advertencias/fallas menores. Revise su bomba.`;
+  } else {
+    mensaje = `✅ Todo en orden. Su bomba ha funcionado correctamente en los últimos días.`;
+  }
+
+  document.getElementById('mensaje-ia').textContent = mensaje;
+
+  renderGraficoEstados(criticos, advertencias, normales);
+
+  const total = criticos + advertencias + normales || 1;
+  document.getElementById('resumen-porcentajes').innerHTML = `
+    📊 Estado general últimos 5 días:<br>
+    🔴 Crítico: ${(criticos / total * 100).toFixed(0)}%<br>
+    🟠 Advertencia: ${(advertencias / total * 100).toFixed(0)}%<br>
+    🟢 Normal: ${(normales / total * 100).toFixed(0)}%
+  `;
+}
+
+async function cargarHistorial() {
+  try {
+    const res = await fetch('/api/historial-estado');
+    const data = await res.json();
+
+    const tabla = document.getElementById('tabla-historial-estado');
+    tabla.innerHTML = '';
+
+    if (data.length === 0) {
+      const fila = document.createElement('tr');
+      const celda = document.createElement('td');
+      celda.colSpan = 4;
+      celda.textContent = 'No hay datos disponibles aún.';
+      celda.style.textAlign = 'center';
+      fila.appendChild(celda);
+      tabla.appendChild(fila);
+      return;
+    }
+
+    data.forEach(item => {
+      const fila = document.createElement('tr');
+
+      const celdaFecha = document.createElement('td');
+      celdaFecha.textContent = item.fecha;
+      fila.appendChild(celdaFecha);
+
+      const celdaTemp = document.createElement('td');
+      celdaTemp.textContent = Number(item.temperatura).toFixed(1);
+      fila.appendChild(celdaTemp);
+
+      const celdaVibracion = document.createElement('td');
+      celdaVibracion.textContent = item.vibracion === 1 ? 'Sí' : 'No';
+      fila.appendChild(celdaVibracion);
+
+      const celdaEstado = document.createElement('td');
+      celdaEstado.textContent = item.estado;
+
+      if (item.estado === 'Crítico') {
+        celdaEstado.style.color = '#d62828';
+        celdaEstado.style.fontWeight = 'bold';
+      } else if (item.estado === 'Advertencia') {
+        celdaEstado.style.color = '#f77f00';
+        celdaEstado.style.fontWeight = 'bold';
+      } else {
+        celdaEstado.style.color = '#2a9d8f';
+      }
+
+      fila.appendChild(celdaEstado);
+      tabla.appendChild(fila);
+    });
+
+    generarRecomendacionIA(data);
+
+  } catch (error) {
+    console.error('Error al cargar historial:', error);
+    document.getElementById('mensaje-ia').textContent = "⚠️ Error al analizar historial.";
+  }
+}
+
+cargarHistorial();
+</script>
+
+
+
 
   <footer>
     <p>Contacto: hydrosense@bombasagua.com</p>

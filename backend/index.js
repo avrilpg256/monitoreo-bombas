@@ -24,30 +24,47 @@ app.use(express.static(path.join('frontend')));
 app.use(express.json());
 app.use(express.static('public'));
 
+
+
 const TELEGRAM_BOT_TOKEN = '7574833745:AAG0H-HV4ij1zMe9SlR-mgo1Fn39Y55g4U8';
-const CHAT_ID = '7076310110';
+const CHAT_ID = ['7076310110', '6462581956'];
 
 export async function enviarAlerta(mensaje) {
-  const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+  for (const id of CHAT_ID) {
+    const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
 
-  try {
-    const res = await fetch(url, {
+    await fetch(url, {
       method: 'POST',
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        chat_id: CHAT_ID,
+        chat_id: id,
         text: mensaje
-      })
+      }),
     });
-
-    const data = await res.json();
-    console.log("Mensaje enviado:", data);
-  } catch (error) {
-    console.error("Error enviando alerta Telegram:", error);
   }
 }
 
 
+
+async function registrarHistorial(temperatura, vibracion) {
+  let estado = 'Normal';
+
+  if (temperatura > 35 && vibracion === 0) {
+    estado = 'Crítico';
+  } else if ((temperatura > 35 && vibracion === 1) || (temperatura <= 35 && vibracion === 0)) {
+    estado = 'Advertencia';
+  }
+
+  try {
+    await pool.query(
+      'INSERT INTO historial (temperatura, vibracion, estado) VALUES ($1, $2, $3)',
+      [temperatura, vibracion, estado]
+    );
+    console.log("Historial combinado guardado");
+  } catch (error) {
+    console.error("Error al guardar historial combinado:", error);
+  }
+}
 
 
 let temperaturaActual = null;
@@ -62,6 +79,7 @@ app.post('/temperatura', async (req, res) => {
   lecturas.push(temp);
   res.sendStatus(200);
 });
+
 setInterval(async () => {
   if (lecturas.length === 0) return;
   const suma = lecturas.reduce((a, b) => a + b, 0);
@@ -69,13 +87,9 @@ setInterval(async () => {
  try {
     await pool.query('INSERT INTO temperatura(valor) VALUES($1)', [promedio]);
     console.log("promedio listo");
+    await registrarHistorial(promedio, parseInt(ultimaVibracion?.vibracion || 0));
 
       if (promedio > 35) {
-      await pool.query(
-        'INSERT INTO historial_fallas(tipo, valor) VALUES($1, $2)',
-        ['Temperatura alta', promedio]
-      );
-      console.log("Falla detectada: Temperatura alta");
      await enviarAlerta(`🚨 Alerta: Temperatura alta detectada (${promedio.toFixed(1)}°C) en la bomba.`);
     }
 
@@ -99,20 +113,26 @@ app.get('/api/temperatura', (req, res) => {
   res.json({ temperatura: temperaturaActual });
 });
 
-app.get('/fallas', async (req, res) => {
+app.get('/api/historial-estado', async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT tipo, valor, TO_CHAR(fecha, 'DD-MM-YYYY HH24:MI:SS') AS fecha
-      FROM historial_fallas
+      SELECT 
+        temperatura,
+        vibracion,
+        estado,
+        TO_CHAR(
+          fecha AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago',
+          'DD-MM-YYYY HH24:MI:SS'
+        ) AS fecha
+      FROM historial
       ORDER BY fecha DESC
     `);
     res.json(result.rows);
   } catch (error) {
-    console.error('Error al obtener fallas:', error);
-    res.status(500).send('Error al obtener el historial de fallas');
+    console.error('Error al obtener historial combinado:', error);
+    res.status(500).send('Error al obtener historial');
   }
 });
-
 
 app.get('/', (req, res) => {
   res.sendFile(path.resolve('frontend', 'inicio.html'));
@@ -180,18 +200,8 @@ app.get('/historial-vibracion', async (req, res) => {
   } catch (error) {
     console.error('Error al obtener historial de vibración:', error);
     res.status(500).send('Error al obtener historial de vibración');
-  }
+}
 });
-
-//app.get('/probar-alerta', async (req, res) => {
- // try {
-  //  await enviarAlerta('🚨 Alerta: Temperatura alta detectada.');
-  //  await enviarAlerta('🚨 ¡Alerta! La bomba ha dejado de vibrar. Revisa su funcionamiento.');
- // } catch (error) {
-  //  console.error('Error al enviar mensaje de prueba:', error);
-  //  res.status(500).send('Error al enviar mensaje de prueba');
- // }
-//});
 
 
 app.listen(3000, '0.0.0.0', () => {

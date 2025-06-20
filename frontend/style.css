@@ -1,15 +1,22 @@
 body {
   font-family: Arial, sans-serif;
   margin: 0;
-  padding: 0;
+  padding-top: 50px;
   background: #f4f7fa;
   color: #333;
+  overflow-x: hidden;
 }
 
 nav {
+  position: fixed;
+   top: 0;
+  left: 0;
+   width: 100%;
   background-color: #2c3e50;
-  padding: 1rem;
+ padding: 10px 20px;
   display: flex;
+   box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  z-index: 1000;
   justify-content: space-around;
 }
 
@@ -60,11 +67,12 @@ footer {
   background-color: #2c3e50;
   color: white;
   text-align: center;
-  padding: 1rem;
-  position: fixed;
+    padding: 15px 10px;
+    margin-top: 40px;
   width: 100%;
   bottom: 0;
 }
+
 
 h1 {
   text-align: center;
@@ -127,4 +135,100 @@ h2 {
 
 tr:nth-child(even) {
   background-color: #f0f8ff;
+}
+#semaforo {
+    width: 60px;
+    margin: 20px auto;
+    padding: 10px;
+    background-color: #333;
+    border-radius: 10px;
+  }
+
+  .luz {
+    width: 40px;
+    height: 40px;
+    margin: 10px auto;
+    border-radius: 50%;
+    background-color: #555;
+    transition: background-color 0.3s ease;
+  }
+
+  .encendida-roja {
+    background-color: red;
+  }
+
+  .encendida-verde {
+    background-color: limegreen;
+  }
+
+  .temp-grande {
+    font-size: 48px;
+    font-weight: bold;
+    transition: color 0.3s ease;
+  }
+
+  .temp-normal {
+    color: #2a9d8f; /* verde */
+  }
+
+  .temp-media {
+    color: #f4a261; /* naranja */
+  }
+
+  .temp-alta {
+    color: #e63946; /* rojo */
+  }
+
+  .layout-horizontal {
+  display: flex;
+  gap: 30px;
+  align-items: flex-start;
+  margin-top: 20px;
+}
+
+.tablajis {
+  flex: 3;
+}
+
+
+.tarjeta-ia::before {
+  display: block;
+  font-weight: bold;
+  font-size: 1.2em;
+  margin-bottom: 10px;
+  color: #264653;
+}
+
+.tarjeta-ia {
+  flex: 2;
+  padding: 20px;
+  border: 2px solid #ccc;
+  border-radius: 10px;
+  background: #f8f9fa;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+  font-size: 1em;
+  color: #333;
+  line-height: 1.5;
+  max-width: 300px;
+  text-align: center;
+}
+
+.tarjeta-ia h3 {
+  color: #264653;
+  margin-bottom: 10px;
+}
+
+.resumen-box {
+  background: #f0f4f8;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  padding: 15px;
+  margin: 15px 0;
+  max-width: 400px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+.resumen-box p {
+  margin: 5px 0;
+  font-weight: bold;
+  color: #264653;
 }

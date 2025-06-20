@@ -22,7 +22,7 @@
       <div style="display: flex;
       justify-content: center; align-items:
       center; height: 100px;">
-      <h2>Temperatura: <span id="valor-temp">--</span>ºC </h2></div>
+      <h2>Temperatura: <span id="valor-temp" class="temp-grande temp-normal"></span></span>ºC </h2></div>
     </div>
     <div class="chart-placeholder">
   <canvas id="graficoTemperatura" width="600" height="300"></canvas>
@@ -37,7 +37,14 @@
       <div id="vib-time" style="font-size: 0.9em; color: gray;"></div>
     </div>
     <div class="chart-placeholder">
-      <h3>Gráfica Vibración</h3>
+      <div id="semaforo">
+  <div id="luz-roja" class="luz"></div>
+  <div id="luz-verde" class="luz"></div>
+</div>
+
+<p id="vib"></p>
+<p id="vib-time"></p>
+
     </div>
   </div>
 </div>
@@ -61,11 +68,22 @@ background-color:rgba(0,0,0,0.5); z-index:9999; justify-content:center; align-it
     try {
       const res = await fetch('/api/temperatura');
       const data = await res.json();
-      console.log('Datos recibidos:', data)
+      console.log('Datos recibidos:', data);
+
       if (data.temperatura !== null && data.temperatura !== undefined) {
         const temp = data.temperatura;
-        document.getElementById('valor-temp').textContent = temp.toFixed(2);
-        if (data.temperatura > 35) {
+        const tempSpan = document.getElementById('valor-temp');
+
+        tempSpan.textContent = temp.toFixed(2);
+
+        tempSpan.classList.remove('temp-normal', 'temp-media', 'temp-alta');
+
+        if (temp < 30) {
+          tempSpan.classList.add('temp-normal');
+        } else if (temp < 35) {
+          tempSpan.classList.add('temp-media');
+        } else {
+          tempSpan.classList.add('temp-alta');
           document.getElementById('modalAlerta').style.display = 'flex';
         }
       }
@@ -81,18 +99,27 @@ background-color:rgba(0,0,0,0.5); z-index:9999; justify-content:center; align-it
   setInterval(obtenerTemperatura, 5000); 
 </script>
 
+
 <script>
 async function actualizarDatos() {
   try {
     const res = await fetch('/api/estado-vibracion');
     const data = await res.json();
+    const luzRoja = document.getElementById('luz-roja');
+    const luzVerde = document.getElementById('luz-verde');
 
     if (data && data.vibracion) {
       document.getElementById('vib').textContent = "¡Vibración detectada!";
-      document.getElementById('vib-time').textContent = Última: ${new Date(data.timestamp).toLocaleString()};
+    document.getElementById('vib-time').textContent = `Última: ${new Date(data.timestamp).toLocaleString()}`;
+
+           luzRoja.classList.remove('encendida-roja');
+      luzVerde.classList.add('encendida-verde');
     } else {
       document.getElementById('vib').textContent = "Sin vibración";
       document.getElementById('vib-time').textContent = "";
+            luzVerde.classList.remove('encendida-verde');
+      luzRoja.classList.add('encendida-roja');
+
     }
   } catch (error) {
     document.getElementById('vib').textContent = "Error al obtener datos";
@@ -106,8 +133,8 @@ setInterval(actualizarDatos, 5000);
 
 
 <script>
-const channelID = 2989940; // Ej: 1234567
-const readAPIKey = 'PC85X5YPHHPX7YKD'; // Opcional si tu canal es público
+const channelID = 2989940; 
+const readAPIKey = 'PC85X5YPHHPX7YKD'; 
 let miGrafico;
 
 async function obtenerDatos() {
@@ -163,9 +190,10 @@ function dibujarGrafico(etiquetas, datos) {
 }
 
 obtenerDatos();
-setInterval(obtenerDatos, 60000); // cada 60 segundos
+setInterval(obtenerDatos, 60000); 
 
 </script>
+
 
 </body>
 

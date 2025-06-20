@@ -12,44 +12,123 @@
     <a href="/temperatura">Temperatura</a>
     <a href="/vibracion">Vibración</a>
   </nav>
+<div class="tablahis">
+  <h2>📈 Historial de Temperatura</h2>
+<p style="color: #555; margin-bottom: 10px;">
+  Aquí puedes ver los registros recientes de temperatura detectados por la bomba.
+</p>
 
-  <div class="container">
-    <h2>Historial de Fallas</h2>
-<table id="tabla-fallas">
-  <thead>
-    <tr>
-      <th>Fecha</th>
-      <th>Tipo</th>
-      <th>Valor</th>
-    </tr>
-  </thead>
-  <tbody></tbody>
-</table>
+<div class="resumen-box">
+  <p>🌡️ Máxima registrada: <strong id="temp-max">--</strong>°C</p>
+  <p>❄️ Mínima registrada: <strong id="temp-min">--</strong>°C</p>
+  <p>📊 Promedio: <strong id="temp-prom">--</strong>°C</p>
+</div>
+
+<canvas id="graficoTemperatura" width="400" height="150" style="margin: 20px auto; display:block;"></canvas>
+
+  <table id="tabla-historial">
+    <thead>
+      <tr>
+        <th>Temperatura (°C)</th>
+        <th>Fecha</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+    </tbody>
+  </table>
+</div>
+  
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
-  async function cargarFallas() {
-    const res = await fetch('/fallas');
-    const data = await res.json();
-    const tbody = document.querySelector('#tabla-fallas tbody');
-    tbody.innerHTML = '';
+  fetch('/historial-temperatura')
+    .then(res => res.json())
+    .then(data => {
+      const tabla = document.getElementById('tabla-historial').querySelector('tbody');
+      tabla.innerHTML = '';
 
-    data.forEach(falla => {
-      const fila = document.createElement('tr');
-      fila.innerHTML = `
-        <td>${falla.fecha}</td>
-        <td>${falla.tipo}</td>
-        <td>${falla.valor}</td>
-      `;
-      tbody.appendChild(fila);
+      if (!data || data.length === 0) {
+        tabla.innerHTML = '<tr><td colspan="2" style="text-align:center;">Sin datos disponibles.</td></tr>';
+        return;
+      }
+
+      const registros = data.slice(0, 20);
+
+ const registrosGrafico = [...registros].reverse();
+
+      let max = -Infinity;
+      let min = Infinity;
+      let suma = 0;
+
+      const labels = [];
+      const valores = [];
+
+      registros.forEach(item => {
+        const temp = parseFloat(item.valor);
+        const fecha = item.fecha;
+
+        const fila = document.createElement('tr');
+        fila.innerHTML = `<td>${temp.toFixed(1)} °C</td><td>${fecha}</td>`;
+        tabla.appendChild(fila);
+
+        labels.push(fecha);
+        valores.push(temp);
+        suma += temp;
+        if (temp > max) max = temp;
+        if (temp < min) min = temp;
+      });
+
+      const promedio = suma / registros.length;
+
+      document.getElementById('temp-max').textContent = max.toFixed(1);
+      document.getElementById('temp-min').textContent = min.toFixed(1);
+      document.getElementById('temp-prom').textContent = promedio.toFixed(1);
+
+      const ctx = document.getElementById('graficoTemperatura').getContext('2d');
+      new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Temperatura (°C)',
+            data: valores,
+            borderColor: '#f77f00',
+            backgroundColor: 'rgba(247, 127, 0, 0.2)',
+            tension: 0.3,
+            pointRadius: 3,
+            fill: true
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: {
+              display: false
+            }
+          },
+          scales: {
+            x: {
+              ticks: {
+                maxRotation: 90,
+                minRotation: 45
+              }
+            },
+            y: {
+              beginAtZero: false
+            }
+          }
+        }
+      });
+    })
+    .catch(error => {
+      console.error('Error cargando historial:', error);
     });
-  }
-
-  cargarFallas();
-  setInterval(cargarFallas, 10000); 
 </script>
 
-  </div>
 
+  
   <footer>
     <p>Contacto: hydrosense@bombasagua.com</p>
     <p>Teléfono: +56 9 64332385</p>

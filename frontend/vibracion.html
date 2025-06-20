@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Historial</title>
+  <title>Historial de Vibración</title> 
   <link href="/style.css" rel="stylesheet" />
 </head>
 <body>
@@ -13,9 +13,50 @@
     <a href="/vibracion">Vibración</a>
   </nav>
 
-  <div class="container">
-    <h1>Contenido próximamente...</h1>
+  <div class="tablahis">
+    <h2>🔧 Historial de Vibración</h2>
+    <p style="color: #555; margin-bottom: 10px;">
+      Aquí puedes ver los registros recientes de vibración detectados por la bomba.
+    </p>
+
+    <table id="tabla-vibracion">
+      <thead>
+        <tr>
+          <th>Vibración</th>
+          <th>Fecha</th>
+        </tr>
+      </thead>
+      <tbody>
+      
+      </tbody>
+    </table>
   </div>
+
+  <script>
+    fetch('/historial-vibracion')
+      .then(res => res.json())
+      .then(data => {
+        const tabla = document.getElementById('tabla-vibracion').querySelector('tbody');
+        tabla.innerHTML = '';
+
+        if (!data || data.length === 0) {
+          tabla.innerHTML = '<tr><td colspan="2" style="text-align:center;">Sin datos disponibles.</td></tr>';
+          return;
+        }
+
+        const registros = data.slice(0, 20);
+
+        registros.forEach(item => {
+          const fila = document.createElement('tr');
+          fila.innerHTML = `
+            <td>${item.estado === "1" ? "Sí" : "No"}</td>
+            <td>${item.fecha_formateada}</td>
+          `;
+          tabla.appendChild(fila);
+        });
+      })
+      .catch(error => console.error('Error cargando historial de vibración:', error));
+  </script>
 
   <footer>
     <p>Contacto: hydrosense@bombasagua.com</p>
